@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Albums</title>
+    <link rel="stylesheet" href="style/main.css" type="text/css">
+    <link rel="stylesheet" href="style/jquery.mobile-1.0a2.min.css" type="text/css"/>
+  </head>
+  <body>
+    <div id="home" data-role="page">
+        <div data-role="header" data-position="fixed"><h1>Albums</h1></div>
+        <div data-role="content">
+            <ul id="albums" data-role="listview" data-theme="c" data-dividertheme="b"></ul>
+        </div>
+        <div data-role="footer" data-position="fixed">
+            <div data-role="navbar">
+                <ul class="ui-grid-a">
+                    <li style="width:100%;"><a href="#addAlbum" data-transition="slideup" data-icon="plus">Add Album</a></li>
+                </ul>
+            </div>
+  	</div>
+    </div>
+    <div id="addAlbum" data-role="page">
+        <div data-role="header"><h1>Add Album</h1></div>
+        <div data-role="content">
+            <form id="albumAddForm" action="#" method="get">
+                <div data-role="fieldcontain"> 
+                <label for="artist">Artist:</label> 
+                <input id="addArtistField" name="artist" type="text" />
+                </div>
+                <div data-role="fieldcontain"> 
+                <label for="title">Title:</label> 
+                <input id="addTitleField" name="title" type="text" />
+                </div>
+                <div data-role="fieldcontain"> 
+                    <label for="description">Description:</label> 
+                    <textarea id="addDescriptionField" name="description" cols="40" rows="8"></textarea>
+                </div>
+                <div class="ui-body ui-body-b">
+                    <fieldset class="ui-grid-a"> 
+                        <div class="ui-block-a">
+                            <a href="#home" id="addCancelButton" data-role="button" data-theme="d">Cancel</a>
+                        </div> 
+                        <div class="ui-block-b">
+                            <a href="#" id="addSubmitButton" data-role="button" data-theme="a">Submit</a>
+                        </div>	   
+                    </fieldset> 
+                </div>
+            </form>
+        </div>
+    </div>
+  </body>
+  <script src="vendor/couchapp/loader.js"></script>
+  <script id="loginSignupDialog" type="text/x-jquery-tml">
+    <div role="dialog" data-backbtn="false" class="ui-dialog ui-body-a">
+      <div class="ui-header ui-bar-a ui-corner-top ui-overlay-shadow">
+	<h1 class="ui-title"></h1>
+	<a id="dialogCloseButton" href="#" data-icon="delete" data-iconpos="notext" style="left: 15px; top: .4em; position: absolute;" />
+      </div>
+      <div data-role="content" class="ui-body-c ui-corner-bottom ui-overlay-shadow">
+        <p>You need to be logged in to do that!</p>
+        <form action="#" method="post">
+          <label for="username">Username:</label>
+          <input type="text" name="username" id="username" value=""  />
+          <label for="password">Password:</label>
+          <input type="password" name="password" id="password" value="" />
+          <a id="submitButton" href="#" type="submit" data-role="button" data-theme="b">Submit</a>
+          <hr/>
+          <a id="optionLinkButton" href="#" />
+        </form>
+      </div>
+      <div data-role="footer" />
+    </div>
+  </script>
+  <script type="text/javascript" charset="utf-8">
+   	
+        $.couch.logout();
+   	$db = $.couch.db("albums");
+    	  	
+   	function handleDocumentReady()
+   	{
+            $("#home").bind( "pagebeforeshow", refreshAlbums );
+            refreshAlbums();
+            
+            // Set database reference and dialog template on albums.
+            $.extend( $.albums, {
+                database: $db,
+                dialog:  $("#loginSignupDialog").tmpl()
+            });
+            
+            $("#addSubmitButton").live( "click", function( event ) { 
+      		event.preventDefault();
+   		var document = {};
+                document.artist = $("input#addArtistField").val();
+                document.title = $("input#addTitleField").val();
+                document.description = $("textarea#addDescriptionField").val();
+                document.creation_date = ( new Date() ).getTime();
+                $.albums.saveDocument( document, {
+                    success: function() {
+                        $.mobile.changePage( "#home", "slidedown", true, true );
+                    },
+                    error: function( status, error, reason ) {
+                        alert( "Cannot save new document.\n" + status + ", " + reason + ", " + error );
+                    }
+                });
+                return false;
+            });
+            
+            $("#addAlbum").bind( "pagehide", function() {
+                $("input#addArtistField").val( "" );
+                $("input#addTitleField").val( "" );
+                $("textarea#addDescriptionField").val( "" );
+            });
+   	}
+   	
+   	function refreshAlbums()
+   	{
+    		$("#albums").empty();
+  		$db.view("albums/albums", { 
+                    success: function( data ) {
+                        var i;
+                        var album;
+                        var artist;
+                        var title;
+                        var description;
+                        var listItem;
+                        var header;
+                        var albumLink;
+                        data.rows.reverse();
+                        for( i in data.rows )
+                        {
+                                album = data.rows[i].value;
+                                artist = album.artist;
+                                title = album.title;
+                                description = album.description;
+                                externalPage = "_show/album/" + album._id;
+                                listItem = "<li class=\"album\">" +
+                                                        "<a href=\"" + externalPage + "\">" +
+                            "<h2 class=\"artist\">" + artist + "<\/h2>" +
+                          "<\/a>" +
+                          "<p class=\"title\">" + title + "<\/p>" +
+                          "<p class=\"description\">" + description + "<\/p>" +
+                      "<\/li>";
+                                $("#albums").append( listItem );
+                        }
+                        $("#albums").listview( "refresh" );
+                        // Hack to refresh placement of footer once list is filled. Was pushing the footer down the amount of list item height accumulatively.
+                        $.fixedToolbars.show();
+                }
+            });
+  	}
+        $(document).ready( handleDocumentReady );
+  	
+  </script>
+</html>
